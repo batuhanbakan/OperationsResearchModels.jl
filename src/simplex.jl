@@ -508,7 +508,7 @@ Maximize: 1.0x1 + 2.0x2 + 3.0x3
 Subject to:
 1.0x1 + 2.0x2 + 3.0x3 <= 10.0
 3.0x1 + 1.0x2 + 5.0x3 <= 15.0
-x1, x2 >= 0
+x1, x2, x3 >= 0
 ```
 
 The following code creates a SimplexProblem object for the above problem:
