@@ -236,4 +236,106 @@
 
     end
 
+    @testset "Dual Simplex - Minimize with GE" begin
+
+        eps = 0.001
+
+        obj = Float64[100.0, 120.0]
+        amat = Float64[
+            3.0 2.0
+            2.0 4.0
+        ]
+        rhs = Float64[36.0, 24.0]
+        dir = [GE, GE]
+        opttype = Minimize
+
+        s = createsimplexproblem(obj, amat, rhs, dir, opttype)
+        solve!(s, method = Dual)
+
+        @test s.converged
+        @test isapprox(s.objective_value, 1200.0, atol = eps)
+        @test s.basicvariableindex == [1, 4]
+        @test isapprox(s.rhs, [12.0, 0.0], atol = eps)
+
+    end
+
+    @testset "Dual Simplex - Maximize with Mixed Directions" begin
+
+        eps = 0.001
+
+        obj = Float64[-2.0, -1.0]
+        amat = Float64[
+            1.0 1.0
+            2.0 3.0
+        ]
+        rhs = Float64[4.0, 12.0]
+        dir = [GE, LE]
+        opttype = Maximize
+
+        s = createsimplexproblem(obj, amat, rhs, dir, opttype)
+        solve!(s, method = Dual)
+
+        @test s.converged
+        @test isapprox(s.objective_value, -4.0, atol = eps)
+        @test s.basicvariableindex == [2, 4]
+        @test isapprox(s.rhs, [4.0, 0.0], atol = eps)
+
+    end
+
+    @testset "Dual Simplex - Equality and Primal Consistency" begin
+
+        eps = 0.001
+
+        obj = Float64[4.0, 5.0]
+        amat = Float64[
+            1.0 1.0
+            1.0 2.0
+        ]
+        rhs = Float64[4.0, 6.0]
+        dir = [EQ, GE]
+        opttype = Minimize
+
+        s_primal = createsimplexproblem(copy(obj), copy(amat), copy(rhs), copy(dir), opttype)
+        solve!(s_primal, method = Primal)
+
+        s_dual = createsimplexproblem(copy(obj), copy(amat), copy(rhs), copy(dir), opttype)
+        solve!(s_dual, method = Dual)
+
+        @test s_primal.converged
+        @test s_dual.converged
+        @test isapprox(s_dual.objective_value, 18.0, atol = eps)
+        @test isapprox(s_primal.objective_value, s_dual.objective_value, atol = eps)
+
+        iters = simplexiterations(createsimplexproblem(copy(obj), copy(amat), copy(rhs), copy(dir), opttype), method = Dual)
+        @test iters[end].converged
+        @test isapprox(iters[end].objective_value, 18.0, atol = eps)
+
+    end
+
+    @testset "Dual Simplex - Error Handling" begin
+
+        obj_not_dual = Float64[-10.0, 120.0]
+        amat_not_dual = Float64[3.0 2.0; 2.0 4.0]
+        rhs_not_dual = Float64[36.0, 24.0]
+        dir_not_dual = [GE, GE]
+
+        s1 = createsimplexproblem(copy(obj_not_dual), copy(amat_not_dual), copy(rhs_not_dual), copy(dir_not_dual), Minimize)
+        @test_throws ErrorException solve!(s1, method = Dual)
+
+        s2 = createsimplexproblem(copy(obj_not_dual), copy(amat_not_dual), copy(rhs_not_dual), copy(dir_not_dual), Minimize)
+        @test_throws ErrorException simplexiterations(s2, method = Dual)
+
+        obj_infeas = Float64[10.0, 20.0]
+        amat_infeas = Float64[1.0 1.0; 1.0 1.0]
+        rhs_infeas = Float64[5.0, 10.0]
+        dir_infeas = [LE, GE]
+
+        s3 = createsimplexproblem(copy(obj_infeas), copy(amat_infeas), copy(rhs_infeas), copy(dir_infeas), Minimize)
+        @test_throws ErrorException solve!(s3, method = Dual)
+
+        s4 = createsimplexproblem(copy(obj_infeas), copy(amat_infeas), copy(rhs_infeas), copy(dir_infeas), Minimize)
+        @test_throws ErrorException simplexiterations(s4, method = Dual)
+
+    end
+
 end # end of test set Simplex
